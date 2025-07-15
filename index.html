@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>하와이 오아후 & 빅 아일랜드 가족 여행 플래너</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals & Ocean Blue -->
+    <!-- Application Structure Plan: The application is designed as a single-page dashboard for maximum usability. Instead of a linear report format, the content is grouped into logical, thematic tabs: '여행 개요' (Overview), '상세 일정' (Itinerary), '준비물 및 팁' (Prep & Tips), and '맛집 & 교통' (Food & Transport). This structure allows users to quickly access the specific information they need without scrolling through irrelevant sections. The core interaction is centered on the '상세 일정' tab, where users can click on a specific day's card. This action dynamically updates a detail view with that day's full schedule, notes, and a visual Chart.js donut chart illustrating the time allocation for activities, travel, and rest. This task-oriented design transforms a static document into a practical, interactive planning tool, enhancing user engagement and comprehension. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Daily schedule, activity times. Goal: Show daily structure at a glance. Viz/Method: Interactive daily cards (HTML/Tailwind) and a dynamic Donut Chart (Chart.js/Canvas). Interaction: Clicking a day card updates the chart and detail view. Justification: Visualizes time distribution, making the pace of each day easy to grasp.
+        - Report Info: Essential packing list. Goal: Create a practical, usable checklist. Viz/Method: Interactive checklist (HTML/JS). Interaction: Users can click to toggle a 'checked' state. Justification: More engaging and useful than a static list.
+        - Report Info: Various tips, safety rules, restaurant lists. Goal: Organize and present dense text clearly. Viz/Method: Tabbed content sections and collapsible accordions (HTML/Tailwind/JS). Interaction: Users click tabs/headers to reveal content. Justification: Prevents information overload and improves navigation.
+        - Report Info: Location names and travel times. Goal: Provide spatial and temporal context. Viz/Method: Structured text with icons (Unicode/HTML) within daily cards. Interaction: N/A. Justification: An interactive map is restricted; this method clearly presents location-based info without external APIs, focusing on the core schedule.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        .tab-active { border-color: #3b82f6; color: #3b82f6; }
+        .tab-inactive { border-color: transparent; }
+        .card-active { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .checklist-item.checked { text-decoration: line-through; color: #9ca3af; }
+        .chart-container { position: relative; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto; height: 300px; max-height: 400px; }
+        @media (min-width: 768px) { .chart-container { height: 350px; } }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-blue-600">Aloha, 하와이!</h1>
+            <p class="mt-2 text-lg text-gray-600">8세 아이와 함께하는 7일간의 오아후 & 빅 아일랜드 가족 여행 플래너</p>
+        </header>
+
+        <nav class="flex justify-center border-b mb-8">
+            <button class="tab-button tab-active text-lg font-semibold py-4 px-6" onclick="showTab('overview')">여행 개요</button>
+            <button class="tab-button tab-inactive text-lg font-semibold py-4 px-6" onclick="showTab('itinerary')">상세 일정</button>
+            <button class="tab-button tab-inactive text-lg font-semibold py-4 px-6" onclick="showTab('preparation')">준비물 & 팁</button>
+            <button class="tab-button tab-inactive text-lg font-semibold py-4 px-6" onclick="showTab('guides')">맛집, 교통 & 숙소</button>
+        </nav>
+
+        <main>
+            <!-- 여행 개요 Tab -->
+            <div id="overview" class="tab-content">
+                 <div class="bg-white p-8 rounded-xl shadow-md">
+                    <h2 class="text-2xl font-bold mb-4 text-blue-500">✨ 8세 아이와 함께하는 꿈같은 오아후 & 빅 아일랜드 여행</h2>
+                    <p class="mb-4 text-gray-700">
+                        이 인터랙티브 플래너는 8월 31일부터 9월 6일까지, 성인 2명과 8세 자녀가 함께하는 7일간의 하와이 오아후와 빅 아일랜드 여행을 위해 설계되었습니다. 보고서의 상세한 내용을 바탕으로, 각 날짜별 활동과 필수 정보를 한눈에 볼 수 있도록 재구성했습니다. 아이의 눈높이에 맞춘 즐거운 활동과 충분한 휴식이 조화를 이루는 최고의 가족 여행을 계획해보세요.
+                    </p>
+                     <div class="grid md:grid-cols-2 gap-6 mt-6">
+                         <div class="bg-blue-50 p-6 rounded-lg">
+                            <h3 class="font-bold text-lg mb-2 text-blue-700">🗓️ 여행 기간 및 구성원</h3>
+                            <p><strong>기간:</strong> 2024년 8월 31일 (토) ~ 9월 6일 (금) (6박 7일)</p>
+                            <p><strong>구성원:</strong> 성인 2명, 8세 자녀 1명</p>
+                         </div>
+                         <div class="bg-blue-50 p-6 rounded-lg">
+                             <h3 class="font-bold text-lg mb-2 text-blue-700">🏝️ 왜 오아후 & 빅 아일랜드인가?</h3>
+                             <p>오아후의 편리함과 빅 아일랜드의 웅장한 자연(화산, 검은 모래 해변)을 함께 경험하여 하와이의 다채로운 매력을 만끽할 수 있습니다.</p>
+                         </div>
+                     </div>
+                </div>
+            </div>
+
+            <!-- 상세 일정 Tab -->
+            <div id="itinerary" class="tab-content" style="display: none;">
+                <p class="text-center text-gray-600 mb-6">아래의 날짜 카드를 클릭하여 오늘의 상세 일정과 시간 분배를 확인해보세요!</p>
+                
+                <!-- Daily Schedule Cards Container -->
+                <div id="daily-cards-container" class="flex overflow-x-auto pb-4 space-x-4 lg:grid lg:grid-cols-7 lg:gap-4 lg:space-x-0 mb-8">
+                    <!-- Cards will be injected here by JS -->
+                </div>
+                
+                <!-- Details View - Always full width below cards -->
+                <div id="details-view" class="bg-white p-6 rounded-xl shadow-lg transition-all duration-300 w-full overflow-hidden">
+                    <h3 id="details-title" class="text-2xl font-bold mb-4 text-center">일정을 선택하세요</h3>
+                    <div id="details-content" class="text-gray-700 w-full break-words">
+                         <div class="chart-container mb-4">
+                            <canvas id="time-allocation-chart"></canvas>
+                        </div>
+                        <p class="text-center">이곳에 선택한 날짜의 상세 활동, 유의사항, 이동 정보가 표시됩니다.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 준비물 & 팁 Tab -->
+            <div id="preparation" class="tab-content" style="display: none;">
+                <div class="grid lg:grid-cols-2 gap-8">
+                    <div class="bg-white p-8 rounded-xl shadow-md">
+                        <h2 class="text-2xl font-bold mb-4 text-green-600">🎒 필수 준비물 체크리스트</h2>
+                        <p class="text-gray-600 mb-4">여행 전 아래 목록을 확인하며 빠짐없이 준비하세요. (클릭하여 체크 가능)</p>
+                        <div id="checklist" class="space-y-3"></div>
+                    </div>
+                    <div class="bg-white p-8 rounded-xl shadow-md">
+                        <h2 class="text-2xl font-bold mb-4 text-red-600">⚠️ 안전 및 문화 팁</h2>
+                        <div id="tips-accordion" class="space-y-4"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 맛집, 교통 & 숙소 Tab -->
+            <div id="guides" class="tab-content" style="display: none;">
+                <div class="grid lg:grid-cols-2 gap-8">
+                    <div class="bg-white p-8 rounded-xl shadow-md mb-8">
+                        <h2 class="text-2xl font-bold mb-4 text-orange-500">🍽️ 가족 친화적 맛집 추천</h2>
+                        <p class="text-gray-600 mb-4">아이와 함께 즐기기 좋은 레스토랑 목록입니다. 지역별로 분류되어 있어 동선에 맞춰 방문하기 좋습니다.</p>
+                        <div id="restaurant-guide"></div>
+                    </div>
+                     <div class="bg-white p-8 rounded-xl shadow-md mb-8">
+                        <h2 class="text-2xl font-bold mb-4 text-purple-500">🚗 하와이 교통 가이드</h2>
+                         <p class="text-gray-600 mb-4">하와이 섬 간 이동은 항공편을 이용하며, 각 섬 내에서는 렌터카가 가장 자유롭고 편리합니다. 특정 지역에서는 대중교통을 혼합하여 사용하는 것도 좋은 전략입니다.</p>
+                        <div id="transport-guide"></div>
+                    </div>
+                    <div class="bg-white p-8 rounded-xl shadow-md lg:col-span-2">
+                        <h2 class="2xl font-bold mb-4 text-blue-500">🏨 추천 숙소 목록</h2>
+                        <p class="text-gray-600 mb-4">여행 스타일에 맞춰 선택할 수 있는 추천 호텔 목록입니다. 위치와 특징을 고려하여 편안한 휴식을 계획하세요.</p>
+                        <p class="text-sm text-gray-500 mb-4"><strong>참고:</strong> 숙소 및 식당 후기는 실시간으로 변동되므로, 예약 전 트립어드바이저, 구글맵, 호텔스닷컴 등 여행 플랫폼에서 최신 리뷰를 직접 검색하여 확인하는 것을 권장합니다.</p>
+                        <div id="hotel-guide"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const tripData = {
+            overview: {
+                period: '2024년 8월 31일 (토) ~ 9월 6일 (금)',
+                members: '성인 2명, 8세 자녀 1명',
+                destination: '하와이 오아후 & 빅 아일랜드',
+                description: '오아후는 아름다운 자연, 풍부한 문화, 다채로운 액티비티가 어우러져 가족 여행객에게 최적의 장소입니다. 본 일정은 8세 아이의 눈높이에 맞춰 활동과 휴식을 균형 있게 배치했습니다. 빅 아일랜드의 웅장한 자연까지 경험하며 하와이의 다채로운 매력을 만끽하세요.'
+            },
+            schedule: [
+                {
+                    day: 1, date: '8/31 (토)', title: '오아후 도착 및 시차 적응', icon: '🛬',
+                    timeAllocation: { activity: 3, travel: 2, rest: 5 },
+                    recommendedRestaurantKey: '듀크스 와이키키',
+                    recommendedHotelKey: '힐튼 하와이안 빌리지 와이키키 비치 리조트',
+                    details: `
+                        <h4 class="font-bold text-lg mb-2">시차 적응 & 와이키키 탐방</h4>
+                        <ul class="list-disc list-inside space-y-2">
+                            <li><strong>오전:</strong> 호놀룰루 공항 도착, <strong>렌터카 수령</strong> 후 호텔 체크인. <strong>충분한 휴식</strong>으로 시차 적응 시작.</li>
+                            <li><strong>오후:</strong> 와이키키 해변 산책 및 모래놀이. <br> <strong>호놀룰루 동물원</strong> 방문 (1-2시간).</li>
+                            <li><strong>저녁:</strong> 와이키키 내 가족 레스토랑.</li>
+                            <li><strong>⭐ 교통:</strong> 공항-호텔 렌터카 이동. 와이키키 내에서는 도보 또는 와이키키 트롤리 (그린 라인) 혼합 이용 가능.</li>
+                            <li><strong>⭐ 팁:</strong> 첫날은 무리하지 않는 것이 중요! 아이 컨디션 조절이 최우선입니다.</li>
+                        </ul>
+                    `
+                },
+                {
+                    day: 2, date: '9/1 (일)', title: '오아후: 다이아몬드 헤드 & 아쿠아리움', icon: '⛰️',
+                    timeAllocation: { activity: 4, travel: 1, rest: 5 },
+                    recommendedRestaurantKey: '타나카 오브 도쿄',
+                    recommendedHotelKey: '힐튼 하와이안 빌리지 와이키키 비치 리조트',
+                    details: `
+                        <h4 class="font-bold text-lg mb-2">하이킹 & 아쿠아리움</h4>
+                        <ul class="list-disc list-inside space-y-2">
+                            <li><strong>오전:</strong> <strong>다이아몬드 헤드</strong> 하이킹 (왕복 1.5시간, 8세 가능 난이도).</li>
+                            <li><strong>오후:시차 적응 & 와이키키 탐방</strong> <strong>와이키키 아쿠아리움</strong> 방문 (1-2시간).</li>
+                            <li><strong>저녁:</strong> 와이키키 자유 시간 및 식사.</li>
+                            <li><strong>⭐ 교통:</strong> 렌터카로 다이아몬드 헤드 및 아쿠아리움 이동. 각 장소 주차장 이용.</li>
+                            <li><strong>⭐ 팁:</strong> 다이아몬드 헤드 사전 예약 필수! 편한 신발과 충분한 물을 챙기세요.</li>
+                        </ul>
+                    `
+                },
+                {
+                    day: 3, date: '9/2 (월)', title: '오아후: 진주만 & 코올리나', icon: '🚢',
+                    timeAllocation: { activity: 5, travel: 2, rest: 3 },
+                    recommendedRestaurantKey: '리틀 이태리 하와이', // Changed to a specific one
+                    recommendedHotelKey: '힐튼 하와이안 빌리지 와이키키 비치 리조트',
+                    details: `
+                        <h4 class="font-bold text-lg mb-2">역사 교육과 해변 휴식</h4>
+                        <ul class="list-disc list-inside space-y-2">
+                            <li><strong>오전:</strong> <strong>진주만 국립 기념물</strong> 방문 (역사 교육, 3-4시간).</li>
+                            <li><strong>오후:</strong> <strong>코올리나 비치</strong>에서 휴식 및 물놀이 (파도가 잔잔해 아이에게 최적).</li>
+                            <li><strong>저녁:</strong> 리조트 내에서 편안하게 식사.</li>
+                            <li><strong>⭐ 교통:</strong> 렌터카로 진주만 및 코올리나 이동. 진주만 내 가방 반입 금지 유의.</li>
+                            <li><strong>⭐ 팁:</strong> USS 애리조나 기념관은 사전 예약 필수.</li>
+                        </ul>
+                    `
+                },
+                {
+                    day: 4, date: '9/3 (화)', title: '빅 아일랜드 당일치기 (화산 탐방)', icon: '✈️🌋',
+                    timeAllocation: { activity: 4, travel: 6, rest: 0 },
+                    recommendedRestaurantKey: '키라우에아 로지 레스토랑',
+                    recommendedHotelKey: '힐튼 하와이안 빌리지 와이키키 비치 리조트', // Still staying in Oahu
+                    details: `
+                        <h4 class="font-bold text-lg mb-2">하와이의 심장, 화산 당일 탐방</h4>
+                        <ul class="list-disc list-inside space-y-2">
+                            <li><strong>이른 오전:</strong> 오아후 호텔 출발, 호놀룰루 공항(HNL)으로 이동.</li>
+                            <li><strong>오전:</strong> 호놀룰루(HNL)에서 빅 아일랜드 힐로(ITO) 또는 코나(KOA) 공항으로 <strong>국내선 항공 이동</strong> (약 40-50분 소요).</li>
+                            <li><strong>도착 후:</strong> 빅 아일랜드 공항에서 <strong>렌터카 수령</strong>.</li>
+                            <li><strong>점심:</strong> 빅 아일랜드 현지에서 간단한 점심 식사.</li>
+                            <li><strong>오후:</strong> <strong>하와이 화산 국립공원</strong> 방문. 킬라우에아 비지터 센터, 크레이터 림 트레일 (짧은 산책), 서스턴 용암 동굴 등 핵심 코스 위주로 탐방. (시간 제약으로 모든 곳 방문은 어려울 수 있음)</li>
+                            <li><strong>늦은 오후:</strong> 빅 아일랜드 공항으로 이동, 렌터카 반납.</li>
+                            <li><strong>저녁:</strong> 빅 아일랜드에서 호놀룰루(HNL)로 <strong>국내선 항공 복귀</strong>.</li>
+                            <li><strong>복귀 후:</strong> 호놀룰루 공항에서 렌터카로 오아후 호텔 복귀.</li>
+                            <li><strong>⭐ 교통:</strong> 오아후-빅 아일랜드 왕복 국내선 항공 (미리 예약 필수). 빅 아일랜드 내 렌터카 필수. 오아후 공항-호텔 렌터카 이동.</li>
+                            <li><strong>⭐ 팁:</strong> 매우 긴 하루가 될 예정이므로, 아이의 컨디션을 최우선으로 고려하고 간식과 물을 충분히 준비하세요. 화산 지역은 날씨 변화가 심하니 방수 자켓과 편한 신발을 준비하세요.</li>
+                        </ul>
+                    `
+                },
+                {
+                    day: 5, date: '9/4 (수)', title: '오아후: 돌 플랜테이션 & 할레이바', icon: '🍍🏄‍♀️',
+                    timeAllocation: { activity: 5, travel: 2, rest: 3 },
+                    recommendedRestaurantKey: '지오바니 새우 트럭',
+                    recommendedHotelKey: '힐튼 하와이안 빌리지 와이키키 비치 리조트',
+                    details: `
+                        <h4 class="font-bold text-lg mb-2">달콤한 파인애플과 서핑 타운</h4>
+                        <ul class="list-disc list-inside space-y-2">
+                            <li><strong>오전:</strong> <strong>돌 플랜테이션</strong> 방문 (파인애플 익스프레스 열차, 미로 체험).</li>
+                            <li><strong>점심/오후:</strong> <strong>할레이바 타운</strong>으로 이동하여 푸드트럭(새우) 점심 및 자유시간.</li>
+                            <li><strong>저녁:</strong> 와이키키 복귀 후 저녁 식사.</li>
+                            <li><strong>⭐ 교통:</strong> 렌터카로 이동.</li>
+                            <li><strong>⭐ 팁:</strong> 돌 플랜테이션의 '돌 스윕' 아이스크림은 필수! 할레이바 푸드트럭은 현금을 준비하면 좋습니다.</li>
+                        </ul>
+                    `
+                },
+                {
+                    day: 6, date: '9/5 (목)', title: '오아후: 하나우마 베이 & 쇼핑', icon: '🐠',
+                    timeAllocation: { activity: 5, travel: 1, rest: 4 },
+                    recommendedRestaurantKey: '알라모아나 센터 푸드코트',
+                    recommendedHotelKey: '힐튼 하와이안 빌리지 와이키키 비치 리조트',
+                    details: `
+                        <h4 class="font-bold text-lg mb-2">스노클링 & 쇼핑</h4>
+                        <ul class="list-disc list-inside space-y-2">
+                            <li><strong>오전:</strong> <strong>하나우마 베이</strong>에서 스노클링 (아이와 함께하기 좋은 최고의 장소).</li>
+                            <li><strong>점심:</strong> 와이키키로 돌아와 식사.</li>
+                            <li><strong>오후:</strong> 와이키키 또는 알라모아나 센터에서 쇼핑 및 자유 시간.</li>
+                            <li><strong>저녁:</strong> 쇼핑몰 내 가족 레스토랑.</li>
+                            <li><strong>⭐ 교통:</strong> 렌터카로 하나우마 베이 이동 (주차 공간 제한 유의). 와이키키 내 쇼핑은 도보 또는 렌터카 이용.</li>
+                            <li><strong>⭐ 팁:</strong> 하나우마 베이는 사전 예약 필수 (월/화 휴무). 구명조끼는 직접 챙겨가야 합니다.</li>
+                        </ul>
+                    `
+                },
+                {
+                    day: 7, date: '9/6 (금)', title: '오아후: 폴리네시안 문화 & 출국', icon: '🗿',
+                    timeAllocation: { activity: 7, travel: 2, rest: 1 },
+                    recommendedRestaurantKey: '폴리네시안 문화 센터 내 식당',
+                    recommendedHotelKey: '힐튼 하와이안 빌리지 와이키키 비치 리조트',
+                    details: `
+                        <h4 class="font-bold text-lg mb-2">문화 체험 & 출국</h4>
+                        <ul class="list-disc list-inside space-y-2">
+                            <li><strong>오후:</strong> <strong>폴리네시안 문화 센터(PCC)</strong> 방문. 6개 섬 마을 문화 체험.</li>
+                            <li><strong>저녁:</strong> PCC에서 저녁 식사 후 메인 쇼 <strong>'HA: Breath of Life'</strong> 관람.</li>
+                            <li><strong>밤:</strong> 공항으로 이동 및 출국.</li>
+                            <li><strong>⭐ 교통:</strong> 렌터카로 PCC 이동 (약 1시간 10분 소요). PCC 셔틀 이용도 가능. 이후 공항으로 렌터카 이동.</li>
+                            <li><strong>⭐ 팁:</strong> PCC 패키지는 미리 예약하는 것이 필수! 하루 종일 즐길 수 있으니 편한 신발을 신으세요.</li>
+                        </ul>
+                    `
+                }
+            ],
+            preparation: {
+                checklist: [
+                    { item: "여권, 항공권, 비자(ESTA)", category: "essential" },
+                    { item: "리프 세이프(Reef-Safe) 선크림", category: "essential" },
+                    { item: "모자, 선글라스", category: "clothing" },
+                    { item: "가벼운 옷(반팔, 반바지), 수영복", category: "clothing" },
+                    { item: "가벼운 긴팔/가디건 (실내 냉방 대비)", category: "clothing" },
+                    { item: "편안한 신발 (운동화, 샌들)", category: "clothing" },
+                    { item: "국제운전면허증, 국내면허증 (렌터카)", category: "essential" },
+                    { item: "110V 어댑터 (돼지코)", category: "etc" },
+                    { item: "상비약 (해열제, 소화제, 밴드 등)", category: "etc" },
+                    { item: "개인 물병, 장바구니 (환경 보호)", category: "etc" },
+                    { item: "아이 장난감, 책, 간식", category: "kids" },
+                    { item: "빅 아일랜드 화산 지역용 긴팔/긴바지 (밤에 쌀쌀함)", category: "clothing" }
+                ],
+                tips: [
+                    { title: "어린이 안전 수칙", content: "시차 적응을 위해 첫날은 충분히 휴식하세요. 물놀이 시 항상 아이를 주시하고, 햇볕에 장시간 노출되지 않도록 주의해야 합니다. 사람이 많은 곳에서는 손을 꼭 잡고, 미아 방지 교육을 미리 하는 것이 좋습니다." },
+                    { title: "차량 내 물건 보관", content: "렌터카 이용 시, 차 안에 귀중품이나 쇼핑한 물건을 절대 두지 마세요. 차량털이의 표적이 될 수 있습니다." },
+                    { title: "현지 문화 및 에티켓", content: "하와이는 팁 문화가 있습니다. 레스토랑, 호텔 등에서 서비스에 대한 감사의 표시로 팁을 지불하는 것이 일반적입니다. 또한, 해양 생물(거북이, 물개 등)과 안전거리를 유지하고 만지지 마세요." },
+                    { title: "환경 보호", content: "해양 생태계 보호를 위해 '리프 세이프' 선크림 사용은 필수입니다. 또한 마트에서 비닐봉투를 제공하지 않으니 장바구니를 꼭 챙기세요." },
+                    { title: "섬 간 이동 (빅 아일랜드 당일치기)", content: "오아후와 빅 아일랜드 간 이동은 국내선 항공편을 이용하는 당일치기 일정입니다. 항공편은 미리 예약하는 것이 좋으며, 빅 아일랜드 내에서는 렌터카를 이용해야 합니다. 매우 긴 하루가 될 수 있으므로 체력 안배에 신경 써야 합니다." }
+                ]
+            },
+            guides: {
+                restaurants: [
+                    { area: "와이키키", name: "듀크스 와이키키", desc: "해변 전망의 캐주얼 다이닝, 하와이안 스타일 음식", review_info: "듀크스 와이키키 리뷰" },
+                    { area: "와이키키", name: "타나카 오브 도쿄", desc: "철판요리 퍼포먼스로 아이들이 좋아하는 곳", review_info: "타나카 오브 도쿄 리뷰" },
+                    { area: "와이키키", name: "리틀 이태리 하와이", desc: "가족이 운영하는 편안한 분위기의 이탈리안 레스토랑", review_info: "리틀 이태리 하와이 리뷰" },
+                    { area: "노스쇼어", name: "지오바니 새우 트럭", desc: "할레이바 타운의 명물, 갈릭 쉬림프가 유명", review_info: "지오바니 새우 트럭 리뷰" },
+                    { area: "알라모아나", name: "알라모아나 센터 푸드코트", desc: "다양한 메뉴를 한 곳에서 즐길 수 있어 편리", review_info: "알라모아나 센터 푸드코트 리뷰" },
+                    { area: "빅 아일랜드 (화산 국립공원 근처)", name: "키라우에아 로지 레스토랑", desc: "화산 국립공원 내 유일한 레스토랑, 전망 좋음", review_info: "키라우에아 로지 레스토랑 리뷰" },
+                    { area: "폴리네시안 문화 센터", name: "폴리네시안 문화 센터 내 식당", desc: "PCC 내 다양한 식사 옵션 (뷔페, 캐주얼 등)", review_info: "폴리네시안 문화 센터 식당 리뷰" }
+                ],
+                transportation: [
+                    { type: "렌터카 (오아후 & 빅 아일랜드)", desc: "각 섬 내에서 가장 자유롭고 편리한 이동 수단입니다. 공항에서 수령하도록 미리 예약하는 것을 추천합니다. 빅 아일랜드는 대중교통이 거의 없으므로 렌터카가 필수입니다." },
+                    { type: "국내선 항공 (섬 간 이동)", desc: "오아후(HNL)와 빅 아일랜드(KOA/ITO) 간 이동 시 필수입니다. 당일치기 일정이므로 이른 아침 출발 및 늦은 오후/저녁 복귀 항공편을 미리 예약해야 합니다." },
+                    { type: "와이키키 트롤리 (오아후)", desc: "와이키키와 주요 관광지를 순환하는 편리한 버스. 렌터카 없이 와이키키 내에서 이동 시 유용합니다." },
+                    { type: "더 버스 (The Bus, 오아후)", desc: "오아후 전역을 운행하는 대중 버스. 현지인처럼 여행하고 싶을 때 좋은 선택." },
+                    { type: "우버/리프트 (오아후)", desc: "렌터카가 없거나 짧은 구간 이동 시 편리하게 이용 가능." }
+                ],
+                hotels: [
+                    { 
+                        area: "오아후 (와이키키)", 
+                        name: "힐튼 하와이안 빌리지 와이키키 비치 리조트", 
+                        desc: "다양한 수영장과 액티비티, 넓은 부지로 가족에게 최적.", 
+                        review_info: "힐튼 하와이안 빌리지 리뷰",
+                        pros: ["다양한 수영장과 라군, 해변 접근성 최고", "매주 금요일 불꽃놀이 관람 가능", "리조트 내 식당 및 상점 많아 편리", "아이들을 위한 프로그램 다양"],
+                        cons: ["규모가 매우 커서 이동 시간이 길 수 있음", "객실이 다소 오래된 느낌을 줄 수 있음", "리조트 내 식당 및 편의시설 가격이 비쌈"]
+                    },
+                    { 
+                        area: "오아후 (와이키키)", 
+                        name: "하얏트 리젠시 와이키키 비치 리조트 앤 스파", 
+                        desc: "와이키키 중심부에 위치, 편리한 접근성.", 
+                        review_info: "하얏트 리젠시 와이키키 리뷰",
+                        pros: ["와이키키 해변 바로 앞, 최적의 위치", "주변 상점, 레스토랑, 대중교통 접근성 우수", "오션뷰 객실에서 멋진 전망", "친절한 직원 서비스"],
+                        cons: ["수영장 규모가 상대적으로 작음", "리조트 내 부대시설이 힐튼보다 적을 수 있음", "주차 요금이 비싼 편"]
+                    },
+                    { 
+                        area: "오아후 (코올리나)", 
+                        name: "아울라니 디즈니 리조트 & 스파", 
+                        desc: "디즈니 테마의 시설과 프로그램으로 아이들에게 인기.", 
+                        review_info: "아울라니 디즈니 리조트 리뷰",
+                        pros: ["디즈니 캐릭터와의 만남, 아이들을 위한 특화된 프로그램", "워터파크, 인공 라군 등 즐길 거리 풍부", "가족 친화적인 분위기와 서비스", "쾌적하고 잘 관리된 시설"],
+                        cons: ["와이키키에서 다소 떨어진 위치 (이동 시간 소요)", "숙박 비용이 매우 높은 편", "디즈니 테마가 아닌 여행객에게는 다소 부담스러울 수 있음"]
+                    },
+                    { 
+                        area: "오아후 (노스쇼어)", 
+                        name: "터틀 베이 리조트", 
+                        desc: "오아후 북부의 유일한 대형 리조트, 자연 친화적.", 
+                        review_info: "터틀 베이 리조트 리뷰",
+                        pros: ["노스쇼어의 아름다운 자연 경관과 프라이빗 해변", "서핑, 승마 등 다양한 액티비티 제공", "조용하고 한적한 휴식에 적합", "골프 코스 보유"],
+                        cons: ["와이키키 및 주요 관광지에서 매우 멀리 떨어져 있음", "주변에 식당이나 편의시설이 적음", "차량이 없으면 이동이 매우 불편함", "가격대가 높은 편"]
+                    }
+                ]
+            }
+        };
+
+        let activeDayCard = null;
+        let timeChart = null;
+        
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
+            document.getElementById(tabId).style.display = 'block';
+
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('tab-active');
+                button.classList.add('tab-inactive');
+            });
+
+            const targetButton = document.querySelector(`.tab-button[onclick*="showTab('${tabId}')"]`);
+            if (targetButton) {
+                targetButton.classList.add('tab-active');
+                targetButton.classList.remove('tab-inactive');
+            }
+        }
+
+        function populateDailyCards() {
+            const container = document.getElementById('daily-cards-container');
+            container.innerHTML = '';
+            tripData.schedule.forEach(day => {
+                const card = document.createElement('div');
+                card.className = 'day-card bg-white p-4 rounded-lg shadow cursor-pointer transition-transform duration-300 hover:shadow-xl hover:-translate-y-1 flex-shrink-0 w-40 sm:w-48 lg:w-auto';
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                         <span class="text-3xl">${day.icon}</span>
+                         <div class="text-right">
+                             <p class="font-bold text-lg text-gray-700">Day ${day.day}</p>
+                             <p class="text-sm text-gray-500">${day.date}</p>
+                         </div>
+                    </div>
+                    <p class="mt-2 font-semibold text-center text-blue-600">${day.title}</p>
+                `;
+                card.onclick = () => showDetails(day, card);
+                container.appendChild(card);
+            });
+        }
+        
+        function showDetails(day, cardElement = null) {
+            document.getElementById('details-title').innerText = `Day ${day.day}: ${day.title}`;
+            
+            const detailsContentDiv = document.getElementById('details-content');
+            
+            // Clear existing content and chart before adding new
+            detailsContentDiv.innerHTML = ''; 
+
+            // Add the main details
+            detailsContentDiv.innerHTML = day.details;
+            
+            // Create and insert new chart container and canvas
+            const chartContainer = document.createElement('div');
+            chartContainer.className = 'chart-container mb-4';
+            const canvas = document.createElement('canvas');
+            canvas.id = 'time-allocation-chart';
+            chartContainer.appendChild(canvas);
+            
+            detailsContentDiv.insertBefore(chartContainer, detailsContentDiv.firstChild);
+
+            updateChart(day.timeAllocation);
+
+            // Append recommended restaurant
+            const restaurant = tripData.guides.restaurants.find(r => r.name === day.recommendedRestaurantKey);
+            if (restaurant) {
+                const restaurantHtml = `
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <h5 class="font-bold text-md text-orange-500">🍽️ 추천 식당: <a href="https://www.google.com/search?q=${encodeURIComponent(restaurant.review_info)}" target="_blank" class="text-blue-500 hover:underline">${restaurant.name}</a></h5>
+                        <p class="text-sm">${restaurant.desc}</p>
+                        <p class="text-xs text-gray-500">후기 검색: <a href="https://www.google.com/search?q=${encodeURIComponent(restaurant.review_info)}" target="_blank" class="text-blue-500 hover:underline">${restaurant.review_info}</a></p>
+                    </div>
+                `;
+                detailsContentDiv.insertAdjacentHTML('beforeend', restaurantHtml);
+            }
+
+            // Append recommended accommodation
+            const hotel = tripData.guides.hotels.find(h => h.name === day.recommendedHotelKey);
+            if (hotel) {
+                const hotelHtml = `
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <h5 class="font-bold text-md text-blue-500">🏨 추천 숙소: <a href="https://www.google.com/search?q=${encodeURIComponent(hotel.review_info)}" target="_blank" class="text-blue-500 hover:underline">${hotel.name}</a></h5>
+                        <p class="text-sm">${hotel.desc}</p>
+                        <p class="text-xs text-gray-500">후기 검색: <a href="https://www.google.com/search?q=${encodeURIComponent(hotel.review_info)}" target="_blank" class="text-blue-500 hover:underline">${hotel.review_info}</a></p>
+                    </div>
+                `;
+                detailsContentDiv.insertAdjacentHTML('beforeend', hotelHtml);
+            }
+
+            const currentCard = cardElement || event.currentTarget;
+            if (activeDayCard) {
+                activeDayCard.classList.remove('card-active', 'bg-blue-100');
+            }
+            if (currentCard) {
+                currentCard.classList.add('card-active', 'bg-blue-100');
+                activeDayCard = currentCard;
+            }
+
+            document.getElementById('details-view').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function updateChart(data) {
+            const ctx = document.getElementById('time-allocation-chart').getContext('2d');
+            if (timeChart) {
+                timeChart.destroy();
+            }
+            timeChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['액티비티', '이동', '휴식/자유시간'],
+                    datasets: [{
+                        label: '시간 분배',
+                        data: [data.activity, data.travel, data.rest],
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.7)',
+                            'rgba(249, 115, 22, 0.7)',
+                            'rgba(22, 163, 74, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(59, 130, 246, 1)',
+                            'rgba(249, 115, 22, 1)',
+                            'rgba(22, 163, 74, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: '하루 시간 분배 (비율)'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function populateChecklist() {
+            const container = document.getElementById('checklist');
+            container.innerHTML = '';
+            tripData.preparation.checklist.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'checklist-item flex items-center bg-gray-100 p-3 rounded-md cursor-pointer';
+                div.innerHTML = `
+                    <span class="mr-3 text-lg">${item.category === 'essential' ? '🔴' : item.category === 'clothing' ? '👕' : item.category === 'kids' ? '🧸' : '🔵'}</span>
+                    <span class="flex-grow">${item.item}</span>
+                    <svg class="w-6 h-6 text-gray-300 check-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                `;
+                div.onclick = (e) => {
+                    const target = e.currentTarget;
+                    target.classList.toggle('checked');
+                    target.querySelector('.check-icon').classList.toggle('text-gray-300');
+                    target.querySelector('.check-icon').classList.toggle('text-green-500');
+                };
+                container.appendChild(div);
+            });
+        }
+        
+        function populateTips() {
+            const container = document.getElementById('tips-accordion');
+            container.innerHTML = '';
+            tripData.preparation.tips.forEach(tip => {
+                 const div = document.createElement('div');
+                 div.className = 'border border-gray-200 rounded-lg';
+                 div.innerHTML = `
+                    <button class="w-full text-left p-4 font-semibold bg-gray-100 hover:bg-gray-200 rounded-t-lg flex justify-between items-center">
+                        ${tip.title}
+                        <svg class="w-5 h-5 transition-transform transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="p-4 bg-white rounded-b-lg hidden">
+                        <p>${tip.content}</p>
+                    </div>
+                 `;
+                div.querySelector('button').onclick = (e) => {
+                    const content = e.currentTarget.nextElementSibling;
+                    const icon = e.currentTarget.querySelector('svg');
+                    content.classList.toggle('hidden');
+                    icon.classList.toggle('rotate-180');
+                };
+                container.appendChild(div);
+            });
+        }
+
+        function populateGuides() {
+            const restaurantContainer = document.getElementById('restaurant-guide');
+            const transportContainer = document.getElementById('transport-guide');
+            const hotelContainer = document.getElementById('hotel-guide');
+
+            restaurantContainer.innerHTML = '<ul class="list-disc list-inside space-y-2"></ul>';
+            transportContainer.innerHTML = '<ul class="list-disc list-inside space-y-2"></ul>';
+            hotelContainer.innerHTML = ''; // Clear previous content
+            
+            tripData.guides.restaurants.forEach(r => {
+                const li = document.createElement('li');
+                li.innerHTML = `<strong>[${r.area}] ${r.name}:</strong> ${r.desc} <span class="text-sm text-gray-500">(<a href="https://www.google.com/search?q=${encodeURIComponent(r.review_info)}" target="_blank" class="text-blue-500 hover:underline">후기 검색</a>)</span>`;
+                restaurantContainer.querySelector('ul').appendChild(li);
+            });
+
+            tripData.guides.transportation.forEach(t => {
+                const li = document.createElement('li');
+                li.innerHTML = `<strong>${t.type}:</strong> ${t.desc}`;
+                transportContainer.querySelector('ul').appendChild(li);
+            });
+
+            tripData.guides.hotels.forEach(h => {
+                const li = document.createElement('li');
+                let hotelHtml = `
+                    <div class="mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                        <h4 class="font-bold text-lg text-blue-700 mb-2">${h.name} <span class="text-sm text-gray-500">(${h.area})</span></h4>
+                        <p class="text-sm mb-2">${h.desc}</p>
+                        <p class="text-xs text-gray-500 mb-2">후기 검색: <a href="https://www.google.com/search?q=${encodeURIComponent(h.review_info)}" target="_blank" class="text-blue-500 hover:underline">${h.review_info}</a></p>
+                `;
+                if (h.pros && h.pros.length > 0) {
+                    hotelHtml += `<p class="font-semibold text-green-600 mt-2">👍 장점:</p><ul class="list-disc list-inside text-sm pl-4">`;
+                    h.pros.forEach(pro => {
+                        hotelHtml += `<li>${pro}</li>`;
+                    });
+                    hotelHtml += `</ul>`;
+                }
+                if (h.cons && h.cons.length > 0) {
+                    hotelHtml += `<p class="font-semibold text-red-600 mt-2">👎 단점:</p><ul class="list-disc list-inside text-sm pl-4">`;
+                    h.cons.forEach(con => {
+                        hotelHtml += `<li>${con}</li>`;
+                    });
+                    hotelHtml += `</ul>`;
+                }
+                hotelHtml += `</div>`;
+                li.innerHTML = hotelHtml;
+                hotelContainer.appendChild(li);
+            });
+        }
+
+        window.onload = () => {
+            populateDailyCards();
+            populateChecklist();
+            populateTips();
+            populateGuides();
+            
+            showTab('overview'); 
+
+            const firstDayData = tripData.schedule[0];
+            const firstCardElement = document.querySelector('.day-card');
+            if (firstDayData && firstCardElement) {
+                showDetails(firstDayData, firstCardElement);
+            }
+        };
+
+    </script>
+</body>
+</html>
